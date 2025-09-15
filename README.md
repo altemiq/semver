@@ -10,13 +10,12 @@ This action installs the CLI for
 [Altemiq.SemanticVersioning](https://github.com/altemiq/nuget-semver) and
 exposes version data from it as action outputs.
 
-
 ## Inputs
 
 All inputs are optional.
 
 | Name               | Default         | Description                                                                                                                                                                         |
-| ------------------ |-----------------| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ------------------ | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `source`           | null            | The NuGet source that contains the tool as well as the packges to be versioned.                                                                                                     |
 | `configfile`       | null            | The NuGet configuration file to use.                                                                                                                                                |
 | `toolVersion`      | latest stable   | The version of the semantic version dotnet command-line tool to install and use. If not specified, the default is the latest stable version.                                        |
