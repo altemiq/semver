@@ -40,8 +40,12 @@ inputs:
 
 # Define your outputs here.
 outputs:
-  time:
-    description: Your output description here
+  Version:
+    description: The full representation of the version include metadata
+  VersionPrefix:
+    description: The four integer version
+  versionSuffix:
+    description: The metadata version
 
 runs:
   using: node24
