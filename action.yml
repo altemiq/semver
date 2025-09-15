@@ -1,6 +1,6 @@
-name: The name of your action here
-description: Provide a description here
-author: Your name or organization here
+name: semver
+description: Installs and runs the Altemiq SemanticVersion tool
+author: altemiq
 
 # Add your action's branding here. This will appear on the GitHub Marketplace.
 branding:
@@ -9,10 +9,34 @@ branding:
 
 # Define your inputs here.
 inputs:
-  milliseconds:
-    description: Your input description here
-    required: true
-    default: '1000'
+  source:
+    description:
+      The NuGet source that contains the tool as well as the packages to be
+      versioned.
+  configfile:
+    description: The NuGet configuration file to use.
+  toolVersion:
+    description:
+      The version of the semantic version dotnet command-line tool to install
+      and use. If not specified, the default is the latest stable version.
+  solution:
+    description: The path to the solution
+  isDefaultBranch:
+    description:
+      Whether the current branch is the default branch. Forces there to be no
+      version suffix. This overrides versionSuffix.
+    default: 'false'
+  versionSuffix:
+    description:
+      Sets the prerelease value. If none is specified, the prerelease from the
+      previous version is used.
+  increment:
+    description:
+      Sets the location for the version increment. Can be either Patch to
+      increment the patch value, or ReleaseLabel to increment the release label.
+    default: Patch
+  workingDirectory:
+    description: The working directory to operate in.
 
 # Define your outputs here.
 outputs:

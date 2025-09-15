@@ -1,7 +1,7 @@
-import require$$0 from 'os';
+import require$$0, { homedir } from 'os';
 import require$$0$1 from 'crypto';
 import require$$1 from 'fs';
-import require$$1$5 from 'path';
+import require$$1$5, { join } from 'path';
 import require$$2 from 'http';
 import require$$3 from 'https';
 import require$$0$4 from 'net';
@@ -27246,18 +27246,31 @@ function requireCore () {
 
 var coreExports = requireCore();
 
+var execExports = requireExec();
+
 /**
- * Waits for a number of milliseconds.
+ * Gets the version suffix
  *
- * @param milliseconds The number of milliseconds to wait.
- * @returns Resolves with 'done!' after the wait is over.
+ * @param versionSuffix The raw version suffix
+ * @returns The processed version suffix
  */
-async function wait(milliseconds) {
-    return new Promise((resolve) => {
-        if (isNaN(milliseconds))
-            throw new Error('milliseconds is not a number');
-        setTimeout(() => resolve('done!'), milliseconds);
-    });
+function getVersionSuffix(versionSuffix) {
+    if (versionSuffix === '' || versionSuffix === null) {
+        return undefined;
+    }
+    if (versionSuffix.startsWith('refs/')) {
+        versionSuffix = versionSuffix.replace('refs/heads/', '');
+    }
+    else if (versionSuffix.startsWith('\\refs\\')) {
+        versionSuffix = versionSuffix.replace('\\refs\\heads\\', '');
+    }
+    if (versionSuffix.includes('/')) {
+        versionSuffix = versionSuffix.replace('/', '+');
+    }
+    else if (versionSuffix.includes('\\')) {
+        versionSuffix = versionSuffix.replace('\\', '+');
+    }
+    return versionSuffix;
 }
 
 /**
@@ -27267,15 +27280,73 @@ async function wait(milliseconds) {
  */
 async function run() {
     try {
-        const ms = coreExports.getInput('milliseconds');
-        // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-        coreExports.debug(`Waiting ${ms} milliseconds ...`);
-        // Log the current timestamp, wait, then log the new timestamp
-        coreExports.debug(new Date().toTimeString());
-        await wait(parseInt(ms, 10));
-        coreExports.debug(new Date().toTimeString());
-        // Set outputs for other workflow steps to use
-        coreExports.setOutput('time', new Date().toTimeString());
+        const workingDirectory = coreExports.getInput('workingDirectory');
+        if (workingDirectory) {
+            coreExports.info(`changing directory to ${workingDirectory}`);
+            process.chdir(workingDirectory);
+        }
+        // install semver
+        const installArgs = [
+            'tool',
+            'install',
+            '-g',
+            'Altemiq.SemanticVersioning'
+        ];
+        const toolVersion = coreExports.getInput('toolVersion');
+        if (toolVersion) {
+            installArgs.push('--version', toolVersion);
+        }
+        const source = coreExports.getInput('source');
+        if (source) {
+            installArgs.push('--add-source', source);
+        }
+        const configFile = coreExports.getInput('configfile');
+        if (configFile) {
+            installArgs.push('--configfile', configFile);
+        }
+        const exitCode = await execExports.exec('dotnet', installArgs, {
+            ignoreReturnCode: true
+        });
+        if (exitCode > 1) {
+            coreExports.setOutput('dotnet tool install failed.', exitCode);
+        }
+        // Collect a JSON string of all the version properties.
+        const args = ['diff', 'solution'];
+        const solution = coreExports.getInput('solution');
+        if (solution) {
+            args.push(solution);
+        }
+        const defaultBranch = coreExports.getBooleanInput('isDefaultBranch');
+        if (defaultBranch) {
+            args.push('--no-version-suffix');
+        }
+        const versionSuffix = getVersionSuffix(coreExports.getInput('versionSuffix'));
+        if (versionSuffix) {
+            args.push('--version-suffix', versionSuffix);
+        }
+        if (source) {
+            args.push('--source', source);
+        }
+        const increment = coreExports.getInput('increment');
+        if (increment) {
+            args.push('--increment', increment);
+        }
+        args.push('--output', 'Json', '--direct-download', '--package-id-regex', coreExports.getInput('packageIdRegex'), '--package-id-replace', coreExports.getInput('packageIdReplace'), '--nologo');
+        const toolPath = join(homedir(), '.dotnet', 'tools', 'dotnet-semver');
+        let versionJson = '';
+        await execExports.exec(toolPath, args, {
+            listeners: {
+                stdout: (data) => {
+                    versionJson += data.toString();
+                }
+            }
+        });
+        coreExports.setOutput('versionJson', versionJson);
+        // Break up the JSON into individual outputs.
+        const versionProperties = JSON.parse(versionJson);
+        for (const name in versionProperties) {
+            coreExports.setOutput(name, versionProperties[name]);
+        }
     }
     catch (error) {
         // Fail the workflow run if an error occurs
